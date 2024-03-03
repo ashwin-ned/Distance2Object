@@ -1,0 +1,172 @@
+
+Python Implementation for 3D Object Distance Detection
+1. Object Detection Module (object_detection.py):
+
+Python
+import torch
+
+class ObjectDetector:
+    def __init__(self, model_path):
+        self.model = torch.hub.load('ultralytics/yolov8', 'yolov8s', pretrained=True)
+        self.model.to('cuda' if torch.cuda.is_available() else 'cpu')
+
+    def detect_objects(self, image):
+        # Preprocess image for YOLOv8
+        image = self.model(image)[0]
+
+        # Extract detected objects with bounding boxes and class labels
+        detections = []
+        for box in image.pandas().xyxy[0]:
+            detections.append({
+                "class": box["name"],
+                "confidence": box["conf"],
+                "bbox": (int(box["xmin"]), int(box["ymin"]), int(box["xmax"]), int(box["ymax"]))
+            })
+        return detections
+Use code with caution.
+2. Depth Estimation Module (depth_estimation.py):
+
+Python
+import torch
+
+class DepthEstimator:
+    def __init__(self, model_path):
+        self.model = torch.hub.load('intel-isl/MiDaS', 'MiDaS_small', pretrained=True)
+        self.model.to('cuda' if torch.cuda.is_available() else 'cpu')
+        self.model.eval()
+
+    def estimate_depth(self, image, bbox):
+        # Crop image based on bounding box
+        cropped_image = image[bbox[1]:bbox[3], bbox[0]:bbox[2], :]
+
+        # Preprocess cropped image for MiDaS
+        # (Refer to MiDaS documentation for specific preprocessing steps)
+
+        # Predict depth map using MiDaS
+        with torch.no_grad():
+            depth_map = self.model(cropped_image.unsqueeze(0))
+
+        # Extract average depth value from the depth map
+        average_depth = depth_map.mean().item()
+
+        return average_depth
+Use code with caution.
+3. Main Script (main.py):
+
+Python
+from object_detection import ObjectDetector
+from depth_estimation import DepthEstimator
+import cv2
+
+# Load models
+detector = ObjectDetector("models/yolov8.pt")
+estimator = DepthEstimator("models/MiDaS_small.pt")
+
+# Load image
+image = cv2.imread("image.jpg")
+
+# Detect objects
+detections = detector.detect_objects(image.copy())
+
+# Iterate through detections and estimate depth
+for obj in detections:
+    bbox = obj["bbox"]
+    depth = estimator.estimate_depth(image.copy(), bbox)
+
+    # Update object with estimated depth
+    obj["depth"] = depth
+
+    # Draw bounding box and depth information on the image
+    cv2.rectangle(image, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
+    cv2.putText(image, f"{obj['class']}: {depth:.2f}m", (bbox[0], bbox[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+# Display the final image with bounding boxes and depth information
+cv2.imshow("3D Object Detection", image)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+Use code with caution.
+Note: This is a basic implementation and might require further adjustments based on your specific requirements and chosen models. Remember to replace the model paths and image filename with your own data.
+
+profile picture
+make the code so that the code takes in a live feed from the video camera and does object detection in realtime on the frame
+Show drafts
+
+
+
+
+
+
+
+
+
+
+
+
+
+Real-time Object Detection with Depth Estimation
+Here's the modified code with real-time video capture and object detection:
+
+Python
+import cv2
+import torch
+
+from object_detection import ObjectDetector
+from depth_estimation import DepthEstimator
+
+
+# Function to draw bounding box and depth information
+def draw_info(image, obj):
+    bbox = obj["bbox"]
+    depth = obj["depth"]
+    cv2.rectangle(image, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
+    cv2.putText(image, f"{obj['class']}: {depth:.2f}m", (bbox[0], bbox[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+
+def main():
+    # Load models
+    detector = ObjectDetector("models/yolov8.pt")
+    estimator = DepthEstimator("models/MiDaS_small.pt")
+
+    # Initialize video capture
+    cap = cv2.VideoCapture(0)
+
+    while True:
+        # Capture frame from camera
+        ret, frame = cap.read()
+
+        if not ret:
+            print("Error capturing frame!")
+            break
+
+        # Detect objects
+        detections = detector.detect_objects(frame.copy())
+
+        # Process and draw information for each object
+        for obj in detections:
+            bbox = obj["bbox"]
+            depth = estimator.estimate_depth(frame.copy(), bbox)
+            obj["depth"] = depth
+            draw_info(frame, obj)
+
+        # Display the processed frame
+        cv2.imshow("3D Object Detection", frame)
+
+        # Exit on 'q' press
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    # Release resources
+    cap.release()
+    cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    main()
+Use code with caution.
+Changes made:
+
+The main function continuously captures frames from the video camera using cv2.VideoCapture.
+The captured frame is passed to the detector.detect_objects function for object detection.
+Identified objects and their depths are visualized on the frame using the draw_info function.
+The processed frame is displayed continuously, and the program exits when the 'q' key is pressed.
+Note: This implementation might require adjusting the frame processing speed for real-time performance depending on your hardware and model complexity.
