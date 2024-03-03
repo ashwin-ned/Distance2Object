@@ -4,9 +4,9 @@ The image is inferenced simlutenousely using MiDaS and Yolov8 and the resulting 
 Some of the usecases of such a system can be seen below:
 
 
-[spacedocking](./media/idea1.png)
-[bin-picking](./media/idea3.png)
-[aquarium](./media/idea2.png)
+![spacedocking](./media/idea1.png)
+![bin-picking](./media/idea3.png)
+![aquarium](./media/idea2.png)
 
 
 
